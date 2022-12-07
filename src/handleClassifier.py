@@ -5,6 +5,9 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import all_estimators
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class handleClassifier:
@@ -68,7 +71,7 @@ class handleClassifier:
                 elif featureSelection["option"] == 2:
                     pass  # to do
 
-            pipelineList.append(("classifier", classifier))
+            pipelineList.append(("clf", classifier))
             pipe = Pipeline(steps=pipelineList)
 
             if not "fitStrategy" in config:
@@ -93,11 +96,15 @@ class handleClassifier:
                 )
 
             elif fitStrategy["option"] == 2:
+                paramGrid = {
+                    "clf__" + k: v for k, v in configFitStrategy["param_grid"].items()
+                }
+                configFitStrategy["param_grid"] = paramGrid
                 gs = GridSearchCV(estimator=pipe, **configFitStrategy)
                 gs.fit(XTrain, YTrain)
                 print(
                     "{}, GridSearchCV best score = {}".format(
-                        classifier.__class__.__name__, gs["best_score_"].mean()
+                        classifier.__class__.__name__, gs.best_score_
                     )
                 )
 
