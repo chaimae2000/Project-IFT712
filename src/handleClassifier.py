@@ -11,13 +11,14 @@ warnings.filterwarnings("ignore")
 
 
 class handleClassifier:
-    def __init__(self, listClassifiers):
-        self.fittedClassifiers = list()
+    def __init__(self):
+        self.estimators = all_estimators(type_filter=["classifier", "regressor"])
 
-        estimators = all_estimators(type_filter=["classifier", "regressor"])
+    def parseClassifiers(self, listClassifiers):
+        parsedClassifiers = list()
         classifierNames = [classifierDict["name"] for classifierDict in listClassifiers]
 
-        for estimatorName, estimatorClass in estimators:
+        for estimatorName, estimatorClass in self.estimators:
             searchIdx = -1
             try:
                 searchIdx = classifierNames.index(estimatorName)
@@ -34,7 +35,7 @@ class handleClassifier:
                 try:
                     estimator = estimatorClass(**config)
                     del classifierDict["name"]
-                    self.fittedClassifiers.append(
+                    parsedClassifiers.append(
                         {"classifier": estimator, "config": classifierDict}
                     )
 
@@ -42,15 +43,18 @@ class handleClassifier:
                     print("Unable to import:", estimatorName)
                     print(exception)
 
-    def fitClassifiers(self, dfTrain):
+        return parsedClassifiers
+
+    def fitClassifiers(self, dfTrain, listClassifiers):
+        parsedClassifiers = self.parseClassifiers(listClassifiers)
         XTrainDef = dfTrain[dfTrain.columns[1:]].to_numpy()
         YTrain = dfTrain[dfTrain.columns[0]].to_numpy()
 
-        for classifierDict in self.fittedClassifiers:
-            XTrain = XTrainDef.copy()
-            pipelineList = list()
+        for classifierDict in parsedClassifiers:
             classifier = classifierDict["classifier"]
             config = classifierDict["config"]
+            XTrain = XTrainDef.copy()
+            pipelineList = list()
 
             if "preprocess" in config:
                 option = config["preprocess"]
@@ -108,7 +112,4 @@ class handleClassifier:
                     )
                 )
 
-    def getClassifiers(self):
-        return [
-            dictClassifier["classifier"] for dictClassifier in self.fittedClassifiers
-        ]
+        return [dictClassifier["classifier"] for dictClassifier in parsedClassifiers]
