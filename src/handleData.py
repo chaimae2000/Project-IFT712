@@ -21,3 +21,5 @@ class handleData:
             df, train_size=trainSize, stratify=df[stratifyCol], shuffle=True
         )
         return dfTrain, dfTest
+
+        

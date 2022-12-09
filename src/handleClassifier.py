@@ -1,22 +1,23 @@
-from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_validate
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import accuracy_score
 from sklearn.utils import all_estimators
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
+import warnings
 
+warnings.filterwarnings("ignore")
 
 class handleClassifier:
-    def __init__(self, listClassifiers):
-        self.fittedClassifiers = list()
+    def __init__(self):
+        self.estimators = all_estimators(type_filter=["classifier", "regressor"])
 
-        estimators = all_estimators(type_filter=["classifier", "regressor"])
+    def parseClassifiers(self, listClassifiers):
+        parsedClassifiers = list()
         classifierNames = [classifierDict["name"] for classifierDict in listClassifiers]
 
-        for estimatorName, estimatorClass in estimators:
+        for estimatorName, estimatorClass in self.estimators:
             searchIdx = -1
             try:
                 searchIdx = classifierNames.index(estimatorName)
@@ -33,7 +34,7 @@ class handleClassifier:
                 try:
                     estimator = estimatorClass(**config)
                     del classifierDict["name"]
-                    self.fittedClassifiers.append(
+                    parsedClassifiers.append(
                         {"classifier": estimator, "config": classifierDict}
                     )
 
@@ -41,16 +42,19 @@ class handleClassifier:
                     print("Unable to import:", estimatorName)
                     print(exception)
 
-    def fitClassifiers(self, dfTrain):
+        return parsedClassifiers
+
+    def fitClassifiers(self, dfTrain, listClassifiers):
+        parsedClassifiers = self.parseClassifiers(listClassifiers)
         XTrainDef = dfTrain[dfTrain.columns[1:]].to_numpy()
         YTrain = dfTrain[dfTrain.columns[0]].to_numpy()
 
-        for classifierDict in self.fittedClassifiers:
-            XTrain = XTrainDef.copy()
-            pipelineList = list()
+        for classifierDict in parsedClassifiers:
             classifier = classifierDict["classifier"]
             config = classifierDict["config"]
-
+            XTrain = XTrainDef.copy()
+            pipelineList = list()
+        
             if "preprocess" in config:
                 option = config["preprocess"]
                 if option == 1:
@@ -70,7 +74,7 @@ class handleClassifier:
                 elif featureSelection["option"] == 2:
                     pass  # to do
 
-            pipelineList.append(("classifier", classifier))
+            pipelineList.append(("clf", classifier))
             pipe = Pipeline(steps=pipelineList)
 
             if not "fitStrategy" in config:
@@ -95,15 +99,17 @@ class handleClassifier:
                 )
 
             elif fitStrategy["option"] == 2:
+                paramGrid = {
+                    "clf__" + k: v for k, v in configFitStrategy["param_grid"].items()
+                }
+                configFitStrategy["param_grid"] = paramGrid
                 gs = GridSearchCV(estimator=pipe, **configFitStrategy)
                 gs.fit(XTrain, YTrain)
+                classifierDict["classifier"] = gs.best_estimator_
                 print(
                     "{}, GridSearchCV best score = {}".format(
-                        classifier.__class__.__name__, gs["best_score_"].mean()
+                        classifier.__class__.__name__, gs.best_score_
                     )
                 )
 
-    def getClassifiers(self):
-        return [
-            dictClassifier["classifier"] for dictClassifier in self.fittedClassifiers
-        ]
+        return [dictClassifier["classifier"] for dictClassifier in parsedClassifiers]
