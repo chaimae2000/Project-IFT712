@@ -38,8 +38,12 @@ class handleResult:
         for clf in classifierList:
             # predict
             YPred = clf.predict(XTest)
-            # get prediction prob
-            probPred = clf.predict_proba(XTest)
+            # get prediction prob if available
+            probPred = (
+                clf.predict_proba(XTest).tolist()
+                if hasattr(clf, "predict_proba")
+                else None
+            )
 
             # get name of the classifier
             if clf.__class__.__name__ == "Pipeline":
@@ -52,7 +56,11 @@ class handleResult:
             precisionList.append(precision_score(YTest, YPred, average="macro"))
             recallList.append(recall_score(YTest, YPred, average="macro"))
             f1ScoreList.append(f1_score(YTest, YPred, average="macro"))
-            AUCList.append(roc_auc_score(YTest, probPred, multi_class="ovr"))
+            AUCList.append(
+                roc_auc_score(YTest, probPred, multi_class="ovr")
+                if isinstance(probPred, list)
+                else None
+            )
 
         # create the data frame
         self.dfClassifierMetric = pd.DataFrame(
@@ -78,5 +86,5 @@ class handleResult:
             subplots=True,
             sharex=False,
             ylabel="Score",
-            figsize=(20, 20),
+            figsize=(30, 30),
         )
