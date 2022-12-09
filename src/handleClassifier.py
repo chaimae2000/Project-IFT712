@@ -1,96 +1,165 @@
+from sklearn.feature_selection import SelectFromModel
 from sklearn.model_selection import cross_validate
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import all_estimators
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
+import pandas as pd
 import warnings
 
+# disable sklearn warnings
 warnings.filterwarnings("ignore")
+
 
 class handleClassifier:
     def __init__(self):
+        """
+        Constructor for the handleClassifier object.
+        """
+        # get all the available classifiers from sklearn
         self.estimators = all_estimators(type_filter=["classifier", "regressor"])
 
-    def parseClassifiers(self, listClassifiers):
+    def parseClassifiers(self, listClassifiers: list):
+        """
+        Construct the specified sklearn classifiers object from listClassifiers.
+
+        Args:
+            listClassifiers (list): A list of dict containing the name of sklearn classifiers and their
+            fitted configuration (see the notebook for an example).
+
+        Returns:
+            list: A list of sklearn classifiers object ready to be fitted.
+        """
+        # the transformed list containing the sklearn classifiers object
         parsedClassifiers = list()
+        # list of classifiers name
         classifierNames = [classifierDict["name"] for classifierDict in listClassifiers]
 
+        # loop over all sklearn classifiers
         for estimatorName, estimatorClass in self.estimators:
             searchIdx = -1
+            # try to search in classifierNames each imported classifiers
             try:
                 searchIdx = classifierNames.index(estimatorName)
             except ValueError:
                 pass
 
+            # if one name is found
             if searchIdx != -1:
+                # get its dictionary
                 classifierDict = listClassifiers[searchIdx]
                 config = dict()
 
+                # check if there is a construct config for this classifier
                 if "config" in classifierDict:
                     config = classifierDict["config"]
-                    del classifierDict["config"]
+                # try to initialize it
                 try:
+                    # construct the sklearn object using config
                     estimator = estimatorClass(**config)
-                    del classifierDict["name"]
+                    # get only the rest of the parameters
+                    classifierConfig = {
+                        k: v
+                        for k, v in classifierDict.items()
+                        if k != "name" or k != "config"
+                    }
+                    # append the constructed object and its fitted config
                     parsedClassifiers.append(
-                        {"classifier": estimator, "config": classifierDict}
+                        {"classifier": estimator, "config": classifierConfig}
                     )
 
+                # raise the exception if it is impossible to import it
                 except Exception as exception:
                     print("Unable to import:", estimatorName)
                     print(exception)
 
         return parsedClassifiers
 
-    def fitClassifiers(self, dfTrain, listClassifiers):
+    def fitClassifiers(self, dfTrain: pd.DataFrame, listClassifiers: list):
+        """
+        Fit all the classifiers in listClassifiers.
+
+        Args:
+            dfTrain (DataFrame): the training set (containing also the labels)
+            listClassifiers (list): A list of dict containing the name of sklearn classifiers and their
+            fitted configuration (see the notebook for an example).
+
+        Raises:
+            ValueError: if a preprocess step is not set in listClassifiers for each classifiers
+            ValueError: if a feature option is not recognized
+            ValueError: if a fitStrategy step is not set in listClassifiers for each classifiers
+            ValueError: if a scoring is not set in listClassifiers for each classifiers
+            ValueError: if a fitStrategy option is not recognized
+
+        Returns:
+            list: Return a list containing fitted pipelines and/or fitted estimators
+        """
+        # construct the sklearn classifiers object from listClassifiers
         parsedClassifiers = self.parseClassifiers(listClassifiers)
+        # get XTrain and YTrain (the first column in dfTrain contains the labels)
         XTrainDef = dfTrain[dfTrain.columns[1:]].to_numpy()
         YTrain = dfTrain[dfTrain.columns[0]].to_numpy()
 
+        # fit each classifier
         for classifierDict in parsedClassifiers:
-            classifier = classifierDict["classifier"]
-            config = classifierDict["config"]
-            XTrain = XTrainDef.copy()
-            pipelineList = list()
-        
-            if "preprocess" in config:
-                option = config["preprocess"]
-                if option == 1:
-                    pipelineList.append(("preprocessor", StandardScaler()))
-                elif option == 2:
-                    pipelineList.append(("preprocessor", MinMaxScaler()))
+            classifier = classifierDict["classifier"]  # get the classifier object
+            config = classifierDict["config"]  # get its fitted configuration
+            XTrain = (
+                XTrainDef.copy()
+            )  # make a copy of XTrain in the case of a preprocess step
+            pipelineList = list()  # a list to create the Pipeline
 
-            if "featureSelection" in config:
-                featureSelection = config["featureSelection"]
-                configFeatureSelection = dict()
-                if "config" in featureSelection:
-                    configFeatureSelection = featureSelection["config"]
-                if featureSelection["option"] == 1:
-                    pipelineList.append(
-                        ("featureSelection", PCA(**configFeatureSelection))
-                    )
-                elif featureSelection["option"] == 2:
-                    pass  # to do
+            # check if the preprocess step is set
+            if not "preprocess" in config:
+                raise ValueError("A preprocess key need to be set")
 
+            # append into the pipeline list the preprocess step
+            if config["preprocess"]:
+                pipelineList.append(("preprocess", StandardScaler()))
+
+            # handle the feature step
+            if "feature" in config:
+                # get its configuration
+                feature = config["feature"]
+                configFeature = dict()
+                if "config" in feature:
+                    configFeature = feature["config"]
+                # if its a reduction : use a PCA
+                if feature["option"] == "reduction":
+                    pipelineList.append(("ftr", PCA(**configFeature)))
+                # if its a selection : use a SelectFromModel
+                elif feature["option"] == "selection":
+                    pipelineList.append(("ftr", SelectFromModel(**configFeature)))
+                # otherwise raise an error
+                else:
+                    raise ValueError("A feature step option is not recognized")
+
+            # append at the last the classifier object
             pipelineList.append(("clf", classifier))
+            # create the pipeline
             pipe = Pipeline(steps=pipelineList)
 
+            # raise an error if the fitStrategy is not set
             if not "fitStrategy" in config:
                 raise ValueError("A fitStrategy key need to be set")
 
+            # get the fitStrategy
             fitStrategy = config["fitStrategy"]
 
+            # raise an error if the scoring is not set
             if not "scoring" in fitStrategy["config"]:
                 raise ValueError("A scoring metric key need to be set")
 
+            # get the config of the fitStrategy
             configFitStrategy = fitStrategy["config"]
 
-            if fitStrategy["option"] == 1:
+            # Cross validation
+            if fitStrategy["option"] == "CV":
                 cv = cross_validate(
                     estimator=pipe, X=XTrain, y=YTrain, **configFitStrategy
                 )
+                # fit
                 classifier.fit(XTrain, YTrain)
                 print(
                     "{}, CV score = {}".format(
@@ -98,13 +167,12 @@ class handleClassifier:
                     )
                 )
 
-            elif fitStrategy["option"] == 2:
-                paramGrid = {
-                    "clf__" + k: v for k, v in configFitStrategy["param_grid"].items()
-                }
-                configFitStrategy["param_grid"] = paramGrid
+            # Grid search strat with CV
+            elif fitStrategy["option"] == "GridSearch":
                 gs = GridSearchCV(estimator=pipe, **configFitStrategy)
+                # fit
                 gs.fit(XTrain, YTrain)
+                # get the pipeline
                 classifierDict["classifier"] = gs.best_estimator_
                 print(
                     "{}, GridSearchCV best score = {}".format(
@@ -112,4 +180,9 @@ class handleClassifier:
                     )
                 )
 
+            # otherwise raise an error
+            else:
+                raise ValueError("A fitStrategy option is not recognized")
+
+        # return the fitted classifiers
         return [dictClassifier["classifier"] for dictClassifier in parsedClassifiers]
