@@ -1,6 +1,5 @@
+from sklearn.model_selection import cross_validate, GridSearchCV
 from sklearn.feature_selection import SelectFromModel
-from sklearn.model_selection import cross_validate
-from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import all_estimators
 from sklearn.pipeline import Pipeline
