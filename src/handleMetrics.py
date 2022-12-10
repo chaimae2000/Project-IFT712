@@ -11,13 +11,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
+
 class handleMetrics:
     def __init__(self):
         """
         Constructor for the handleMetrics object.
         """
         pass
-       
+
     def plotBarChart(self, dfTest: pd.DataFrame, classifierList: list):
         """
         Plot the performance metrics as a bar plot
@@ -86,9 +87,9 @@ class handleMetrics:
         )
 
         for ax in axes:
-            ax.bar_label(ax.containers[0], label_type='edge')
+            ax.bar_label(ax.containers[0], label_type="edge")
 
-    def plotLearningCurve(self, df : pd.DataFrame, classifierList : list):
+    def plotLearningCurve(self, df: pd.DataFrame, classifierList: list):
         """
         Plot learning curves
 
@@ -100,8 +101,8 @@ class handleMetrics:
         X = df[df.columns[1:]].to_numpy()
         Y = df[df.columns[0]].to_numpy()
 
-        numberClf = len(classifierList) # number of classifier
-        nRows = int(np.ceil(numberClf / 4)) # number of rows for the subplots
+        numberClf = len(classifierList)  # number of classifier
+        nRows = int(np.ceil(numberClf / 4))  # number of rows for the subplots
 
         # create subplots
         fig, ax = plt.subplots(nrows=nRows, ncols=4, figsize=(14, 10), sharey=True)
@@ -129,7 +130,7 @@ class handleMetrics:
 
             if estimatorName == "Pipeline":
                 estimatorName = estimator[-1].__class__.__name__
-                
+
             ax[axIdx].set_title(estimatorName)
 
         # remove unnecessary plot
@@ -137,6 +138,3 @@ class handleMetrics:
 
         for i in range(toRemove):
             ax.flat[(nRows * 4) - 1 - i].set_visible(False)
-
-
-
