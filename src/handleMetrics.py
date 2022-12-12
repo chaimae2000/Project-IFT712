@@ -11,14 +11,20 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
+
 class handleMetrics:
     def __init__(self):
         """
         Constructor for the handleMetrics object.
         """
         pass
+<<<<<<< HEAD
        
     def plotBarChart(self, XTest: np.array, YTest: np.array, classifierList: list):
+=======
+
+    def plotBarChart(self, dfTest: pd.DataFrame, classifierList: list):
+>>>>>>> d24ad8737e87394e0c3b357a17c379b2eda23e31
         """
         Plot the performance metrics as a bar plot
 
@@ -84,9 +90,13 @@ class handleMetrics:
         
         # plot bar values
         for ax in axes:
-            ax.bar_label(ax.containers[0], label_type='edge')
+            ax.bar_label(ax.containers[0], label_type="edge")
 
+<<<<<<< HEAD
     def plotLearningCurve(self, df : pd.DataFrame, labelsCol: str, classifierList : list):
+=======
+    def plotLearningCurve(self, df: pd.DataFrame, classifierList: list):
+>>>>>>> d24ad8737e87394e0c3b357a17c379b2eda23e31
         """
         Plot learning curves
 
@@ -96,11 +106,19 @@ class handleMetrics:
             classifierList (list): a list containing fitted sklearn classifier objects
         """
         # split the data and the labels
+<<<<<<< HEAD
         Y = df[labelsCol].to_numpy()
         X = df.drop([labelsCol], axis=1).to_numpy()
         
         numberClf = len(classifierList) # number of classifier
         nRows = int(np.ceil(numberClf / 4)) # number of rows for the subplots
+=======
+        X = df[df.columns[1:]].to_numpy()
+        Y = df[df.columns[0]].to_numpy()
+
+        numberClf = len(classifierList)  # number of classifier
+        nRows = int(np.ceil(numberClf / 4))  # number of rows for the subplots
+>>>>>>> d24ad8737e87394e0c3b357a17c379b2eda23e31
 
         # create subplots
         fig, ax = plt.subplots(nrows=nRows, ncols=4, figsize=(14, 10), sharey=True)
@@ -128,7 +146,7 @@ class handleMetrics:
 
             if estimatorName == "Pipeline":
                 estimatorName = estimator[-1].__class__.__name__
-                
+
             ax[axIdx].set_title(estimatorName)
 
         # remove unnecessary plot
@@ -136,6 +154,3 @@ class handleMetrics:
 
         for i in range(toRemove):
             ax.flat[(nRows * 4) - 1 - i].set_visible(False)
-
-
-
