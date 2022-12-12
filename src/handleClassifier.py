@@ -77,7 +77,13 @@ class handleClassifier:
 
         return parsedClassifiers
 
-    def fitClassifiers(self, XTrain: np.array, YTrain: np.array, listClassifiers: list, plotTrainScore : bool = True):
+    def fitClassifiers(
+        self,
+        XTrain: np.array,
+        YTrain: np.array,
+        listClassifiers: list,
+        plotTrainScore: bool = True,
+    ):
         """
         Fit all the classifiers in listClassifiers.
 
@@ -104,12 +110,12 @@ class handleClassifier:
         nameList = list()
         # training score
         scoreList = list()
-       
+
         # fit each classifier
         for classifierDict in parsedClassifiers:
             classifier = classifierDict["classifier"]  # get the classifier object
             config = classifierDict["config"]  # get its fitted configuration
-            pipelineList = list() # a list to create the Pipeline
+            pipelineList = list()  # a list to create the Pipeline
 
             # get classifier name
             nameList.append(classifier.__class__.__name__)
@@ -183,13 +189,13 @@ class handleClassifier:
                 raise ValueError("A fitStrategy option is not recognized")
 
         # plot
-        if(plotTrainScore):
+        if plotTrainScore:
             # create a data frame for the plot
             dfTrainingScore = pd.DataFrame(
                 {
                     "Training score": scoreList,
                 },
-                index=nameList
+                index=nameList,
             )
 
             # plot
@@ -201,7 +207,7 @@ class handleClassifier:
             )
 
             # plot bar values
-            axes.bar_label(axes.containers[0], label_type='edge')
+            axes.bar_label(axes.containers[0], label_type="edge")
 
         # return the fitted classifiers
         return [dictClassifier["classifier"] for dictClassifier in parsedClassifiers]
