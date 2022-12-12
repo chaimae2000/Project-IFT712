@@ -18,22 +18,19 @@ class handleMetrics:
         """
         pass
        
-    def plotBarChart(self, dfTest: pd.DataFrame, classifierList: list):
+    def plotBarChart(self, XTest: np.array, YTest: np.array, classifierList: list):
         """
         Plot the performance metrics as a bar plot
 
         Args:
-            dfTest (DataFrame): the testing set (containing also the labels)
+            XTest (numpy.array): the testing data
+            YTest (numpy.array): the testing labels
             classifierList (list): a list containing fitted sklearn classifier objects
         """
         # lists
         nameList, accuracyList, precisionList, recallList, f1ScoreList, AUCList = (
             [] for i in range(6)
         )
-
-        # get labels (first column)
-        XTest = dfTest[dfTest.columns[1:]].to_numpy()
-        YTest = dfTest[dfTest.columns[0]].to_numpy()
 
         # loop over each classifier
         for clf in classifierList:
@@ -63,8 +60,8 @@ class handleMetrics:
                 else None
             )
 
-        # create the data frame
-        self.dfClassifierMetric = pd.DataFrame(
+        # create a data frame for the plot
+        dfClassifierMetric = pd.DataFrame(
             {
                 "Accuracy": accuracyList,
                 "Precision": precisionList,
@@ -76,7 +73,7 @@ class handleMetrics:
         )
 
         # plot
-        axes = self.dfClassifierMetric.plot(
+        axes = dfClassifierMetric.plot(
             kind="bar",
             rot=0,
             subplots=True,
@@ -84,22 +81,24 @@ class handleMetrics:
             ylabel="Score",
             figsize=(30, 30),
         )
-
+        
+        # plot bar values
         for ax in axes:
             ax.bar_label(ax.containers[0], label_type='edge')
 
-    def plotLearningCurve(self, df : pd.DataFrame, classifierList : list):
+    def plotLearningCurve(self, df : pd.DataFrame, labelsCol: str, classifierList : list):
         """
         Plot learning curves
 
         Args:
             df (pd.DataFrame): data set
+            labelsCol (str): the name of the column containing the labels
             classifierList (list): a list containing fitted sklearn classifier objects
         """
         # split the data and the labels
-        X = df[df.columns[1:]].to_numpy()
-        Y = df[df.columns[0]].to_numpy()
-
+        Y = df[labelsCol].to_numpy()
+        X = df.drop([labelsCol], axis=1).to_numpy()
+        
         numberClf = len(classifierList) # number of classifier
         nRows = int(np.ceil(numberClf / 4)) # number of rows for the subplots
 

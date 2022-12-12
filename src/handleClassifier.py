@@ -4,7 +4,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils import all_estimators
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
+
 import pandas as pd
+import numpy as np
 import warnings
 
 # disable sklearn warnings
@@ -75,14 +77,16 @@ class handleClassifier:
 
         return parsedClassifiers
 
-    def fitClassifiers(self, dfTrain: pd.DataFrame, listClassifiers: list):
+    def fitClassifiers(self, XTrain: np.array, YTrain: np.array, listClassifiers: list, plotTrainScore : bool = True):
         """
         Fit all the classifiers in listClassifiers.
 
         Args:
-            dfTrain (DataFrame): the training set (containing also the labels)
+            XTrain (numpy.array): the training data
+            YTrain (numpy.array): the training labels
             listClassifiers (list): A list of dict containing the name of sklearn classifiers and their
-            fitted configuration (see the notebook for an example).
+            fitted configuration (see the notebook for an example)
+            verbose (bool): plot training score
 
         Raises:
             ValueError: if a preprocess step is not set in listClassifiers for each classifiers
@@ -96,18 +100,19 @@ class handleClassifier:
         """
         # construct the sklearn classifiers object from listClassifiers
         parsedClassifiers = self.parseClassifiers(listClassifiers)
-        # get XTrain and YTrain (the first column in dfTrain contains the labels)
-        XTrainDef = dfTrain[dfTrain.columns[1:]].to_numpy()
-        YTrain = dfTrain[dfTrain.columns[0]].to_numpy()
-
+        # name of the classifiers
+        nameList = list()
+        # training score
+        scoreList = list()
+       
         # fit each classifier
         for classifierDict in parsedClassifiers:
             classifier = classifierDict["classifier"]  # get the classifier object
             config = classifierDict["config"]  # get its fitted configuration
-            XTrain = (
-                XTrainDef.copy()
-            )  # make a copy of XTrain in the case of a preprocess step
-            pipelineList = list()  # a list to create the Pipeline
+            pipelineList = list() # a list to create the Pipeline
+
+            # get classifier name
+            nameList.append(classifier.__class__.__name__)
 
             # check if the preprocess step is set
             if not "preprocess" in config:
@@ -160,11 +165,8 @@ class handleClassifier:
                 )
                 # fit
                 classifier.fit(XTrain, YTrain)
-                print(
-                    "{}, CV score = {}".format(
-                        classifier.__class__.__name__, cv["test_score"].mean()
-                    )
-                )
+                # get training score
+                scoreList.append(cv["test_score"].mean())
 
             # Grid search strat with CV
             elif fitStrategy["option"] == "GridSearch":
@@ -173,15 +175,33 @@ class handleClassifier:
                 gs.fit(XTrain, YTrain)
                 # get the pipeline
                 classifierDict["classifier"] = gs.best_estimator_
-                print(
-                    "{}, GridSearchCV best score = {}".format(
-                        classifier.__class__.__name__, gs.best_score_
-                    )
-                )
+                # get training score
+                scoreList.append(gs.best_score_)
 
             # otherwise raise an error
             else:
                 raise ValueError("A fitStrategy option is not recognized")
+
+        # plot
+        if(plotTrainScore):
+            # create a data frame for the plot
+            dfTrainingScore = pd.DataFrame(
+                {
+                    "Training score": scoreList,
+                },
+                index=nameList
+            )
+
+            # plot
+            axes = dfTrainingScore.plot(
+                kind="bar",
+                rot=0,
+                ylabel="Training score",
+                figsize=(30, 10),
+            )
+
+            # plot bar values
+            axes.bar_label(axes.containers[0], label_type='edge')
 
         # return the fitted classifiers
         return [dictClassifier["classifier"] for dictClassifier in parsedClassifiers]
