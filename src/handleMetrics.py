@@ -103,6 +103,7 @@ class handleMetrics:
         numberClf = len(classifierList)  # number of classifier
         nRows = int(np.ceil(numberClf / 4))  # number of rows for the subplots
 
+        # Code adapted from : https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html
         # create subplots
         fig, ax = plt.subplots(nrows=nRows, ncols=4, figsize=(14, 10), sharey=True)
         fig.tight_layout(pad=3.5)
